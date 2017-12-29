@@ -75,7 +75,7 @@ vector<float> run_graph(Session* session, vector<float> inputs) {
 	Tensor image_tensor(DT_FLOAT, TensorShape({1, 9}));
 	auto input_tensor_mapped = image_tensor.tensor<float, 2>();
 	for(int i = 0; i < 9; i++)
-	 	input_tensor_mapped(i) = 0.5;
+	 	input_tensor_mapped(i) = inputs[i];
 
 	// Run
 	string input_layer = "main_input";
@@ -89,7 +89,7 @@ vector<float> run_graph(Session* session, vector<float> inputs) {
 	// Save
 	vector<float> outputs_vector;
 	for(int i = 0; i < 8; i++)
-		outputs_vector.push_back(outputs[0].flat<float>()(i));
+		outputs_vector.push_back(0.0 + outputs[0].flat<float>()(i));
 	return outputs_vector;
 }
 
@@ -204,15 +204,22 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	// Run
 	vector<float> inputs;
+	inputs.push_back(0);
+	inputs.push_back(0);
+	inputs.push_back(0);
+	inputs.push_back(0);
+	inputs.push_back(0);
+	inputs.push_back(0);
+	inputs.push_back(0);
+	inputs.push_back(0);
+	inputs.push_back(fmod(0/3*3.1415, 3.1415));
 	vector<float> outputs = run_graph(session, inputs);
-	cout << "Output 0: " << outputs[0] << endl;
+	cout << "Output: ";
+	for(int i = 0; i < 8; i++)
+		cout << outputs[i] <<  "  ";
+	cout << endl;
 
-	// Run
-	
-	outputs = run_graph(session, inputs);
-	cout << "Output 0: " << outputs[0] << endl;
 
 	// Loop
 	unsigned long dtus1 = (unsigned long) 1000000.0*FIXED_TIMESTEP;
@@ -306,12 +313,20 @@ int main(int argc, char* argv[]) {
 
 		// Run
 		vector<float> inputs;
+		inputs.push_back(0);
+		inputs.push_back(0);
+		inputs.push_back(0);
+		inputs.push_back(0);
+		inputs.push_back(0);
+		inputs.push_back(0);
+		inputs.push_back(0);
+		inputs.push_back(0);
+		inputs.push_back(fmod(simTimeS/8*3.1415, 2.0));
 		vector<float> outputs = run_graph(session, inputs);
 		cout << "Output: ";
 		for(int i = 0; i < 8; i++)
 			cout << outputs[i] <<  "  ";
 		cout << endl;
-
 
 		// Knees
 
