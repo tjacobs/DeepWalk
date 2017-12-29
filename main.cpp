@@ -69,26 +69,29 @@ Status LoadGraph(const string& graph_file_name, std::unique_ptr<tensorflow::Sess
 }
 
 // Runs a graph.
-vector<Tensor> run_graph(Session* session, int input) {
+vector<float> run_graph(Session* session, vector<float> inputs) {
 
-  // Set up outputs
-  vector<Tensor> resized_tensors;
+	// Create tensor
+	Tensor image_tensor(DT_FLOAT, TensorShape({1, 9}));
+	auto input_tensor_mapped = image_tensor.tensor<float, 2>();
+	for(int i = 0; i < 9; i++)
+	 	input_tensor_mapped(i) = 0.5;
 
-  const Tensor& resized_tensor = resized_tensors[0];
+	// Run
+	string input_layer = "main_input";
+	string output_layer = "output_0";
+	vector<Tensor> outputs;
+	Status status = session->Run({{input_layer, image_tensor}}, {output_layer}, {}, &outputs);
+	if (!status.ok()) {
+		LOG(ERROR) << status;
+	}
 
-  // Actually run the image through the model.
-  string input_layer = "main_input";
-  string output_layer0 = "output_0";
-  string output_layer1 = "output_1";
-  vector<Tensor> outputs;
-  /*Status status = session->Run({{input_layer, resized_tensor}}, {output_layer0, output_layer1}, {}, &outputs);
-  if (!status.ok()) {
-    LOG(ERROR) << status;
-  }*/
-
-  return outputs;
+	// Save
+	vector<float> outputs_vector;
+	for(int i = 0; i < 8; i++)
+		outputs_vector.push_back(outputs[0].flat<float>()(i));
+	return outputs_vector;
 }
-
 
 
 
@@ -194,9 +197,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	// Add the graph to the session
-	printf("Creating compute graph.\n");
 	status = session->Create(graph_def);
-	printf("Creating compute graph...\n");
 	if (!status.ok()) {
 		printf("Failed to create compute graph.\n");
 		std::cout << status.ToString() << "\n";
@@ -204,8 +205,14 @@ int main(int argc, char* argv[]) {
 	}
 
 	// Run
-	std::vector<Tensor> outputs = run_graph(session, 0);
+	vector<float> inputs;
+	vector<float> outputs = run_graph(session, inputs);
+	cout << "Output 0: " << outputs[0] << endl;
 
+	// Run
+	
+	outputs = run_graph(session, inputs);
+	cout << "Output 0: " << outputs[0] << endl;
 
 	// Loop
 	unsigned long dtus1 = (unsigned long) 1000000.0*FIXED_TIMESTEP;
@@ -297,31 +304,40 @@ int main(int argc, char* argv[]) {
 		if(stepCycle > 15 && stepCycle < 20)
 			stepProgress4 = fmod(simTimeS/5*3.1415, 3.1415);
 
+		// Run
+		vector<float> inputs;
+		vector<float> outputs = run_graph(session, inputs);
+		cout << "Output: ";
+		for(int i = 0; i < 8; i++)
+			cout << outputs[i] <<  "  ";
+		cout << endl;
+
+
 		// Knees
 
 		// Apply some torque
-		torque = get_torque(1.5 + 0.5 * sin(1*stepProgress1), q[0], prev_error[0]);
+		torque = get_torque(outputs[0], q[0], prev_error[0]);
 		b3GetJointInfo(kPhysClient, robot, jointNameToId["1"], &jointInfo);
 		command = b3JointControlCommandInit2(kPhysClient, robot, CONTROL_MODE_TORQUE);
 		b3JointControlSetDesiredForceTorque(command, jointInfo.m_uIndex, torque);
 		statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
 
 		// Apply some torque
-		torque = get_torque(1.5 + 0.5 * sin(1*stepProgress2), q[1], prev_error[1]);
+		torque = get_torque(outputs[1], q[1], prev_error[1]);
 		b3GetJointInfo(kPhysClient, robot, jointNameToId["3"], &jointInfo);
 		command = b3JointControlCommandInit2(kPhysClient, robot, CONTROL_MODE_TORQUE);
 		b3JointControlSetDesiredForceTorque(command, jointInfo.m_uIndex, torque);
 		statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
 
 		// Apply some torque
-		torque = get_torque(1.5 + 0.5 * sin(1*stepProgress3), q[2], prev_error[2]);
+		torque = get_torque(outputs[2], q[2], prev_error[2]);
 		b3GetJointInfo(kPhysClient, robot, jointNameToId["5"], &jointInfo);
 		command = b3JointControlCommandInit2(kPhysClient, robot, CONTROL_MODE_TORQUE);
 		b3JointControlSetDesiredForceTorque(command, jointInfo.m_uIndex, torque);
 		statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
 
 		// Apply some torque
-		torque = get_torque(1.5 + 0.5 * sin(1*stepProgress4), q[3], prev_error[3]);
+		torque = get_torque(outputs[3], q[3], prev_error[3]);
 		b3GetJointInfo(kPhysClient, robot, jointNameToId["7"], &jointInfo);
 		command = b3JointControlCommandInit2(kPhysClient, robot, CONTROL_MODE_TORQUE);
 		b3JointControlSetDesiredForceTorque(command, jointInfo.m_uIndex, torque);
@@ -331,28 +347,28 @@ int main(int argc, char* argv[]) {
 		// Hips
 
 		// Apply some torque
-		torque = get_torque(0.6 + 0.3 * sin(1*stepProgress1), q[4], prev_error[4]);
+		torque = get_torque(outputs[4], q[4], prev_error[4]);
 		b3GetJointInfo(kPhysClient, robot, jointNameToId["0"], &jointInfo);
 		command = b3JointControlCommandInit2(kPhysClient, robot, CONTROL_MODE_TORQUE);
 		b3JointControlSetDesiredForceTorque(command, jointInfo.m_uIndex, torque);
 		statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
 
 		// Apply some torque
-		torque = get_torque(0.6 + 0.3 * sin(1*stepProgress2), q[5], prev_error[5]);
+		torque = get_torque(outputs[5], q[5], prev_error[5]);
 		b3GetJointInfo(kPhysClient, robot, jointNameToId["2"], &jointInfo);
 		command = b3JointControlCommandInit2(kPhysClient, robot, CONTROL_MODE_TORQUE);
 		b3JointControlSetDesiredForceTorque(command, jointInfo.m_uIndex, torque);
 		statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
 
 		// Apply some torque
-		torque = get_torque(0.4 + 0.3 * sin(1*stepProgress3), q[6], prev_error[6]);
+		torque = get_torque(outputs[6], q[6], prev_error[6]);
 		b3GetJointInfo(kPhysClient, robot, jointNameToId["4"], &jointInfo);
 		command = b3JointControlCommandInit2(kPhysClient, robot, CONTROL_MODE_TORQUE);
 		b3JointControlSetDesiredForceTorque(command, jointInfo.m_uIndex, torque);
 		statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
 
 		// Apply some torque
-		torque = get_torque(0.4 + 0.3 * sin(1*stepProgress4), q[7], prev_error[7]);
+		torque = get_torque(outputs[7], q[7], prev_error[7]);
 		b3GetJointInfo(kPhysClient, robot, jointNameToId["6"], &jointInfo);
 		command = b3JointControlCommandInit2(kPhysClient, robot, CONTROL_MODE_TORQUE);
 		b3JointControlSetDesiredForceTorque(command, jointInfo.m_uIndex, torque);
