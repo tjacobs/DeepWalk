@@ -44,7 +44,7 @@ map<std::string, int> jointNameToId;
 double get_torque(double desired_position, double position, double &prev_error) {
 	double error = (desired_position - position);
 	double d = error - prev_error;
-	double torque = 20.5 * error + 0.0 * d;
+	double torque = 70.0 * error + 50.0 * d;
 	prev_error = error;
 	return torque;
 }
@@ -132,7 +132,7 @@ int main(int argc, char* argv[]) {
 	b3Assert(b3GetStatusType(statusHandle) == CMD_CLIENT_COMMAND_COMPLETED);
 
 	// Load the world
-	command = b3LoadUrdfCommandInit(kPhysClient, "plane.urdf");
+	command = b3LoadUrdfCommandInit(kPhysClient, "./terrain.urdf");
 	b3LoadUrdfCommandSetUseFixedBase(command, true);	
 	statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
 	statusType = b3GetStatusType(statusHandle);
@@ -145,7 +145,7 @@ int main(int argc, char* argv[]) {
 	b3LoadUrdfCommandSetUseFixedBase(command, false);
 
 	// Set position
-	b3LoadUrdfCommandSetStartPosition(command, 0, 0, 0.7);
+	b3LoadUrdfCommandSetStartPosition(command, 0, 0, 0.4);
 	b3LoadUrdfCommandSetUseMultiBody(command, true);
 	statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
 	statusType = b3GetStatusType(statusHandle);
@@ -156,8 +156,8 @@ int main(int argc, char* argv[]) {
 
 	// Disable default linear/angular damping
 	b3SharedMemoryCommandHandle command = b3InitChangeDynamicsInfo(kPhysClient);
-	double linearDamping = 0;
-	double angularDamping = 0;
+	double linearDamping = 10;
+	double angularDamping = 10;
 	b3ChangeDynamicsInfoSetLinearDamping(command, robot, linearDamping);
 	b3ChangeDynamicsInfoSetAngularDamping(command, robot, angularDamping);
 	statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
@@ -175,8 +175,15 @@ int main(int argc, char* argv[]) {
 		// Reset before torque control - see #1459
 		command = b3JointControlCommandInit2(kPhysClient, robot, CONTROL_MODE_VELOCITY);
 		b3JointControlSetDesiredVelocity(command, jointInfo.m_uIndex, 0);
-		b3JointControlSetMaximumForce(command, jointInfo.m_uIndex, 50);
+		b3JointControlSetMaximumForce(command, jointInfo.m_uIndex, 100);
 		statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
+		//printf("%d %s\n", i, jointInfo.m_jointName);
+
+
+		command = b3InitChangeDynamicsInfo(kPhysClient);
+		b3ChangeDynamicsInfoSetLateralFriction(command, robot, jointInfo.m_uIndex, 1.0);
+		statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
+
 	}
 
 
@@ -214,12 +221,26 @@ int main(int argc, char* argv[]) {
 	inputs.push_back(0);
 	inputs.push_back(0);
 	inputs.push_back(fmod(0/3*3.1415, 3.1415));
-	vector<float> outputs = run_graph(session, inputs);
+	vector<float> outputs_v = run_graph(session, inputs);
 	cout << "Output: ";
 	for(int i = 0; i < 8; i++)
-		cout << outputs[i] <<  "  ";
+		cout << outputs_v[i] <<  "  ";
 	cout << endl;
 
+	vector<float> outputs;
+	for(int i = 0; i < 8; i++)
+		outputs.push_back(0.0);
+
+	// Stand
+	outputs[1] = 1.5;
+	outputs[5] = 0.5;
+	outputs[3] = 1.5;
+	outputs[7] = 0.5;
+
+	outputs[0] = 1.5;
+	outputs[4] = 0.5;
+	outputs[2] = 1.5;
+	outputs[6] = 0.5;
 
 	// Loop
 	unsigned long dtus1 = (unsigned long) 1000000.0*FIXED_TIMESTEP;
@@ -228,7 +249,7 @@ int main(int argc, char* argv[]) {
 	double prev_error[12];
 	double torque;
 	while (b3CanSubmitCommand(kPhysClient)) {
-		simTimeS += 0.000005*dtus1;
+		simTimeS += 0.000001*dtus1;
 
 		// Get joint values
 		command = b3RequestActualStateCommandInit(kPhysClient, robot);
@@ -296,37 +317,127 @@ int main(int argc, char* argv[]) {
 		b3JointControlSetDesiredForceTorque(command, jointInfo.m_uIndex, torque);
 		statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
 
-		double stepCycle = fmod(simTimeS, 20.0);
+		double speed = 1.0;
+		double stepCycle = fmod(simTimeS * speed, 4.0);
 
-		double stepProgress1 = 0;
-//		if(stepCycle > 0 && stepCycle < 5)
-		stepProgress1 = fmod(simTimeS/3*3.1415, 3.1415);
-		double stepProgress2 = 0;
-		if(stepCycle > 5 && stepCycle < 10)
-			stepProgress2 = fmod(simTimeS/5*3.1415, 3.1415);
-		double stepProgress3 = 0;
-		if(stepCycle > 10 && stepCycle < 15)
-			stepProgress3 = fmod(simTimeS/5*3.1415, 3.1415);
-		double stepProgress4 = 0;
-		if(stepCycle > 15 && stepCycle < 20)
-			stepProgress4 = fmod(simTimeS/5*3.1415, 3.1415);
+		float a = 0.0;
+		float p = 200 / speed;
+
+		if(stepCycle >= 0 && stepCycle < 1) {
+			outputs[0] += (2.0 - outputs[0])/p;
+			outputs[4] += (1.5 + a - outputs[4])/p;
+		}
+		if(stepCycle >= 1 && stepCycle < 2) {
+			outputs[0] += (2.0 - outputs[0])/p;
+			outputs[4] += (0.5 + a - outputs[4])/p;
+		}
+		if(stepCycle >= 2 && stepCycle < 3) {
+			outputs[0] += (1.5 - outputs[0])/p;
+			outputs[4] += (0.5 + a - outputs[4])/p;
+		}
+		if(stepCycle >= 3 && stepCycle < 4) {
+			outputs[0] += (1.0 - outputs[0])/p;
+			outputs[4] += (1.5 + a - outputs[4])/p;
+		}
+
+
+		if(stepCycle >= 0 && stepCycle < 1) {
+			outputs[1] += (1.5 - outputs[1])/p;
+			outputs[5] += (0.5 + a - outputs[5])/p;
+		}
+		if(stepCycle >= 1 && stepCycle < 2) {
+			outputs[1] += (1.0 - outputs[1])/p;
+			outputs[5] += (1.5 + a - outputs[5])/p;
+		}
+		if(stepCycle >= 2 && stepCycle < 3) {
+			outputs[1] += (2.0 - outputs[1])/p;
+			outputs[5] += (1.5 + a - outputs[5])/p;
+		}
+		if(stepCycle >= 3 && stepCycle < 4) {
+			outputs[1] += (2.0 - outputs[1])/p;
+			outputs[5] += (0.5 + a - outputs[5])/p;
+		}
+
+		if(stepCycle >= 0 && stepCycle < 1) {
+			outputs[2] += (1.5 - outputs[2])/p;
+			outputs[6] += (0.5 + a - outputs[6])/p;;
+		}
+		if(stepCycle >= 1 && stepCycle < 2) {
+			outputs[2] += (1.0 - outputs[2])/p;
+			outputs[6] += (1.5 + a - outputs[6])/p;
+		}
+		if(stepCycle >= 2 && stepCycle < 3) {
+			outputs[2] += (2.0 - outputs[2])/p;
+			outputs[6] += (1.5 + a - outputs[6])/p;
+		}
+		if(stepCycle >= 3 && stepCycle < 4) {
+			outputs[2] += (2.0 - outputs[2])/p;
+			outputs[6] += (0.5 + a - outputs[6])/p;
+		}
+
+
+
+		if(stepCycle >= 0 && stepCycle < 1) {
+			outputs[3] += (2.0 - outputs[3])/p;
+			outputs[7] += (1.5 + a - outputs[7])/p;
+		}
+		if(stepCycle >= 1 && stepCycle < 2) {
+			outputs[3] += (2.0 - outputs[3])/p;
+			outputs[7] += (0.5 + a - outputs[7])/p;
+		}
+		if(stepCycle >= 2 && stepCycle < 3) {
+			outputs[3] += (1.5 - outputs[3])/p;
+			outputs[7] += (0.5 + a - outputs[7])/p;
+		}
+		if(stepCycle >= 3 && stepCycle < 4) {
+			outputs[3] += (1.0 - outputs[3])/p;
+			outputs[7] += (1.5 + a - outputs[7])/p;
+		}
+
+//		cout << q[5] << endl;
+
+/*
+		if(stepCycle >= 0 && stepCycle < 1) {
+//			outputs[1] = 3.0;
+//			outputs[4] = 0.0;
+			outputs[5] = 0.0;
+		}
+		if(stepCycle >= 1 && stepCycle < 2) {
+//			outputs[1] = 3.0;
+//			outputs[4] = 0.0;
+			outputs[5] = 0.0;
+		}
+		if(stepCycle >= 2 && stepCycle < 3) {
+//			outputs[1] = 3.0;
+//			outputs[4] = 1.0;
+			outputs[5] = 1.0;
+//			outputs[7] = 1.0;
+		}
+		if(stepCycle >= 3 && stepCycle < 5) {
+//			outputs[1] = 3.0;
+//			outputs[4] = 1.0;
+			outputs[5] = 1.0;
+//			outputs[7] = 1.0;
+		}*/
 
 		// Run
-		vector<float> inputs;
-		inputs.push_back(0);
-		inputs.push_back(0);
-		inputs.push_back(0);
-		inputs.push_back(0);
-		inputs.push_back(0);
-		inputs.push_back(0);
-		inputs.push_back(0);
-		inputs.push_back(0);
-		inputs.push_back(fmod(simTimeS/8*3.1415, 2.0));
-		vector<float> outputs = run_graph(session, inputs);
-		cout << "Output: ";
-		for(int i = 0; i < 8; i++)
-			cout << outputs[i] <<  "  ";
-		cout << endl;
+		if( false ) {
+			vector<float> inputs;
+			inputs.push_back(0);
+			inputs.push_back(0);
+			inputs.push_back(0);
+			inputs.push_back(0);
+			inputs.push_back(0);
+			inputs.push_back(0);
+			inputs.push_back(0);
+			inputs.push_back(0);
+			inputs.push_back(fmod(simTimeS/8*3.1415, 3.1415));
+			vector<float> outputs = run_graph(session, inputs);
+			cout << "Output: ";
+			for(int i = 0; i < 8; i++)
+				cout << outputs[i] <<  "  ";
+			cout << endl;
+		}
 
 		// Knees
 
@@ -370,6 +481,7 @@ int main(int argc, char* argv[]) {
 
 		// Apply some torque
 		torque = get_torque(outputs[5], q[5], prev_error[5]);
+		//printf("torque: %f\n", torque);
 		b3GetJointInfo(kPhysClient, robot, jointNameToId["2"], &jointInfo);
 		command = b3JointControlCommandInit2(kPhysClient, robot, CONTROL_MODE_TORQUE);
 		b3JointControlSetDesiredForceTorque(command, jointInfo.m_uIndex, torque);
