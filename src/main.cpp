@@ -6,27 +6,13 @@
 #include <stdio.h>
 
 // Bullet
-#include "../Utils/b3Clock.h"
-#include "SharedMemory/PhysicsClientC_API.h"
-#include "Bullet3Common/b3Vector3.h"
-#include "Bullet3Common/b3Quaternion.h"
+#include "bullet3/examples/Utils/b3Clock.h"
+#include "bullet3/examples/SharedMemory/PhysicsClientC_API.h"
+#include "bullet3/src/Bullet3Common/b3Vector3.h"
+#include "bullet3/src/Bullet3Common/b3Quaternion.h"
 
 // Tensorflow
-#include <tensorflow/cc/client/client_session.h>
-#include <tensorflow/cc/ops/standard_ops.h>
-#include <tensorflow/cc/ops/image_ops.h>
-#include <tensorflow/core/framework/tensor.h>
-#include <tensorflow/core/public/session.h>
-#include <tensorflow/core/platform/env.h>
-#include <tensorflow/core/lib/io/path.h>
-using tensorflow::Tensor;
-using tensorflow::Status;
-using tensorflow::Session;
-using tensorflow::string;
-using tensorflow::int32;
-using namespace tensorflow;
-using namespace tensorflow::ops;
-using namespace std;
+#include "tensorflow.h"
 
 // Bullet globals
 const int CONTROL_RATE = 500;
@@ -49,52 +35,7 @@ double get_torque(double desired_position, double position, double &prev_error) 
 	return torque;
 }
 
-
-
-
-
-// Reads a model graph definition from disk, and creates a session object you can use to run it.
-Status LoadGraph(const string& graph_file_name, std::unique_ptr<tensorflow::Session>* session) {
-  tensorflow::GraphDef graph_def;
-  Status load_graph_status = ReadBinaryProto(tensorflow::Env::Default(), graph_file_name, &graph_def);
-  if (!load_graph_status.ok()) {
-    return tensorflow::errors::NotFound("Failed to load compute graph at '", graph_file_name, "'");
-  }
-  session->reset(tensorflow::NewSession(tensorflow::SessionOptions()));
-  Status session_create_status = (*session)->Create(graph_def);
-  if (!session_create_status.ok()) {
-    return session_create_status;
-  }
-  return Status::OK();
-}
-
-// Runs a graph.
-vector<float> run_graph(Session* session, vector<float> inputs) {
-
-	// Create tensor
-	Tensor image_tensor(DT_FLOAT, TensorShape({1, 9}));
-	auto input_tensor_mapped = image_tensor.tensor<float, 2>();
-	for(int i = 0; i < 9; i++)
-	 	input_tensor_mapped(i) = inputs[i];
-
-	// Run
-	string input_layer = "main_input";
-	string output_layer = "output_0";
-	vector<Tensor> outputs;
-	Status status = session->Run({{input_layer, image_tensor}}, {output_layer}, {}, &outputs);
-	if (!status.ok()) {
-		LOG(ERROR) << status;
-	}
-
-	// Save
-	vector<float> outputs_vector;
-	for(int i = 0; i < 8; i++)
-		outputs_vector.push_back(0.0 + outputs[0].flat<float>()(i));
-	return outputs_vector;
-}
-
-
-
+// Main
 int main(int argc, char* argv[]) {
 
 	// MacOS requires it run on the main thread
@@ -186,47 +127,25 @@ int main(int argc, char* argv[]) {
 
 	}
 
-
-	// Initialize a tensorflow session
-	Session* session;
-	Status status = NewSession(SessionOptions(), &session);
-	if (!status.ok()) {
-		std::cout << status.ToString() << "\n";
-		return 1;
-	}
-
 	// Load graph
-	const string& graph_file_name = "graph.pb";
-	tensorflow::GraphDef graph_def;
-	Status load_graph_status = ReadBinaryProto(tensorflow::Env::Default(), graph_file_name, &graph_def);
-	if (!load_graph_status.ok()) {
-		printf("Failed to load compute graph.\n");
-	}
+	Session* session = load_graph("graph.pb");
 
-	// Add the graph to the session
-	status = session->Create(graph_def);
-	if (!status.ok()) {
-		printf("Failed to create compute graph.\n");
-		std::cout << status.ToString() << "\n";
-		return 1;
-	}
-
+	// Load input
 	vector<float> inputs;
-	inputs.push_back(0);
-	inputs.push_back(0);
-	inputs.push_back(0);
-	inputs.push_back(0);
-	inputs.push_back(0);
-	inputs.push_back(0);
-	inputs.push_back(0);
-	inputs.push_back(0);
+	for(int i = 0; i < 8; i++)
+		inputs.push_back(0);
 	inputs.push_back(fmod(0/3*3.1415, 3.1415));
+
+	// Run graph
 	vector<float> outputs_v = run_graph(session, inputs);
+
+	// Output graph
 	cout << "Output: ";
 	for(int i = 0; i < 8; i++)
 		cout << outputs_v[i] <<  "  ";
 	cout << endl;
 
+	// Load output
 	vector<float> outputs;
 	for(int i = 0; i < 8; i++)
 		outputs.push_back(0.0);
@@ -340,7 +259,6 @@ int main(int argc, char* argv[]) {
 			outputs[4] += (1.5 + a - outputs[4])/p;
 		}
 
-
 		if(stepCycle >= 0 && stepCycle < 1) {
 			outputs[1] += (1.5 - outputs[1])/p;
 			outputs[5] += (0.5 + a - outputs[5])/p;
@@ -375,8 +293,6 @@ int main(int argc, char* argv[]) {
 			outputs[6] += (0.5 + a - outputs[6])/p;
 		}
 
-
-
 		if(stepCycle >= 0 && stepCycle < 1) {
 			outputs[3] += (2.0 - outputs[3])/p;
 			outputs[7] += (1.5 + a - outputs[7])/p;
@@ -394,50 +310,6 @@ int main(int argc, char* argv[]) {
 			outputs[7] += (1.5 + a - outputs[7])/p;
 		}
 
-//		cout << q[5] << endl;
-
-/*
-		if(stepCycle >= 0 && stepCycle < 1) {
-//			outputs[1] = 3.0;
-//			outputs[4] = 0.0;
-			outputs[5] = 0.0;
-		}
-		if(stepCycle >= 1 && stepCycle < 2) {
-//			outputs[1] = 3.0;
-//			outputs[4] = 0.0;
-			outputs[5] = 0.0;
-		}
-		if(stepCycle >= 2 && stepCycle < 3) {
-//			outputs[1] = 3.0;
-//			outputs[4] = 1.0;
-			outputs[5] = 1.0;
-//			outputs[7] = 1.0;
-		}
-		if(stepCycle >= 3 && stepCycle < 5) {
-//			outputs[1] = 3.0;
-//			outputs[4] = 1.0;
-			outputs[5] = 1.0;
-//			outputs[7] = 1.0;
-		}*/
-
-		// Run
-		if( false ) {
-			vector<float> inputs;
-			inputs.push_back(0);
-			inputs.push_back(0);
-			inputs.push_back(0);
-			inputs.push_back(0);
-			inputs.push_back(0);
-			inputs.push_back(0);
-			inputs.push_back(0);
-			inputs.push_back(0);
-			inputs.push_back(fmod(simTimeS/8*3.1415, 3.1415));
-			vector<float> outputs = run_graph(session, inputs);
-			cout << "Output: ";
-			for(int i = 0; i < 8; i++)
-				cout << outputs[i] <<  "  ";
-			cout << endl;
-		}
 
 		// Knees
 
@@ -481,7 +353,6 @@ int main(int argc, char* argv[]) {
 
 		// Apply some torque
 		torque = get_torque(outputs[5], q[5], prev_error[5]);
-		//printf("torque: %f\n", torque);
 		b3GetJointInfo(kPhysClient, robot, jointNameToId["2"], &jointInfo);
 		command = b3JointControlCommandInit2(kPhysClient, robot, CONTROL_MODE_TORQUE);
 		b3JointControlSetDesiredForceTorque(command, jointInfo.m_uIndex, torque);
@@ -505,9 +376,7 @@ int main(int argc, char* argv[]) {
 		// Run a step
 		statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, b3InitStepSimulationCommand(kPhysClient));
 
-		// debugging output
-		//printf("%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\n", simTimeS, q[0], q[1], v[0], v[1], torque);
-
+		// Sleep
 		b3Clock::usleep(1000.*1000.*FIXED_TIMESTEP);
 	}
 	b3DisconnectSharedMemory(kPhysClient);
