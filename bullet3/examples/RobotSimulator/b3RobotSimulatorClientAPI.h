@@ -1,6 +1,8 @@
 #ifndef B3_ROBOT_SIMULATOR_CLIENT_API_H
 #define B3_ROBOT_SIMULATOR_CLIENT_API_H
 
+#include "../SharedMemory/SharedMemoryInProcessPhysicsC_API.h"
+
 #include "../SharedMemory/SharedMemoryPublic.h"
 #include "Bullet3Common/b3Vector3.h"
 #include "Bullet3Common/b3Quaternion.h"
@@ -149,6 +151,8 @@ public:
 	virtual ~b3RobotSimulatorClientAPI();
 
 	bool connect(int mode, const std::string& hostName = "localhost", int portOrKey = -1);
+
+	b3PhysicsClientHandle getClientHandle();
 
 	void disconnect();
 

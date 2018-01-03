@@ -10,6 +10,7 @@
 #include "bullet3/examples/SharedMemory/PhysicsClientC_API.h"
 #include "bullet3/src/Bullet3Common/b3Vector3.h"
 #include "bullet3/src/Bullet3Common/b3Quaternion.h"
+#include "bullet3/examples/RobotSimulator/b3RobotSimulatorClientAPI.h"
 
 // Tensorflow
 #include "tensorflow.h"
@@ -38,48 +39,19 @@ double get_torque(double desired_position, double position, double &prev_error) 
 // Main
 int main(int argc, char* argv[]) {
 
-	// MacOS requires it run on the main thread
-#ifdef __APPLE__
-	kPhysClient = b3CreateInProcessPhysicsServerAndConnectMainThread(argc, argv);
-#else
-	kPhysClient = b3CreateInProcessPhysicsServerAndConnect(argc, argv);
-#endif
-	if (!kPhysClient)
-		return -1;
-
-	// Create visualizer
-	command = b3InitConfigureOpenGLVisualizer(kPhysClient);
-	b3ConfigureOpenGLVisualizerSetVisualizationFlags(command, COV_ENABLE_GUI, 0);
-	b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
-	b3ConfigureOpenGLVisualizerSetVisualizationFlags(command, COV_ENABLE_SHADOWS, 0);
-	b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
-	b3SetTimeOut(kPhysClient, 10);
-
-	// This syncBodies is only needed when connecting to an existing physics server that has already some bodies
-	command = b3InitSyncBodyInfoCommand(kPhysClient);
-	statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
-	statusType = b3GetStatusType(statusHandle);
-
-	// Set fixed time step
-	command = b3InitPhysicsParamCommand(kPhysClient);
-	ret = b3PhysicsParamSetTimeStep(command, FIXED_TIMESTEP);
-	statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
-	ret = b3PhysicsParamSetRealTimeSimulation(command, false);
-	statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
-
-	// Gravity on
-	ret = b3PhysicsParamSetGravity(command, 0, 0, -9.82);
-	statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
-	b3Assert(b3GetStatusType(statusHandle) == CMD_CLIENT_COMMAND_COMPLETED);
-
-	// Load the world
-	command = b3LoadUrdfCommandInit(kPhysClient, "../data/terrain.urdf");
-	b3LoadUrdfCommandSetUseFixedBase(command, true);	
-	statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
-	statusType = b3GetStatusType(statusHandle);
-	b3Assert(statusType == CMD_URDF_LOADING_COMPLETED);
+	// Set up Bullet simulator
+	b3RobotSimulatorClientAPI* sim = new b3RobotSimulatorClientAPI();
+	sim->connect(eCONNECT_GUI);
+	sim->configureDebugVisualizer(COV_ENABLE_GUI, 0);
+	sim->setTimeOut(10);
+	sim->syncBodies();
+	b3Scalar fixedTimeStep = 1./240.;
+	sim->setTimeStep(fixedTimeStep);
+	sim->setGravity(b3MakeVector3(0, 0, -9.8));
+	sim->loadURDF("../data/terrain.urdf");
 
 	// Load robot
+	kPhysClient = sim->getClientHandle();
 	command = b3LoadUrdfCommandInit(kPhysClient, "../data/ngr.urdf");
 	int flags = URDF_USE_INERTIA_FROM_FILE;
 	b3LoadUrdfCommandSetFlags(command, flags);
@@ -120,14 +92,13 @@ int main(int argc, char* argv[]) {
 		statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
 		//printf("%d %s\n", i, jointInfo.m_jointName);
 
-
 		command = b3InitChangeDynamicsInfo(kPhysClient);
 		b3ChangeDynamicsInfoSetLateralFriction(command, robot, jointInfo.m_uIndex, 1.0);
 		statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
 
 	}
 
-	// Load graph
+	// Load TensorFlow graph
 	Session* session = load_graph("../data/graph.pb");
 
 	// Load input
@@ -167,8 +138,40 @@ int main(int argc, char* argv[]) {
 	double q[12], v[12];
 	double prev_error[12];
 	double torque;
+	int rotateCamera = 0;
+
 	while (b3CanSubmitCommand(kPhysClient)) {
 		simTimeS += 0.000001*dtus1;
+
+		// Keyboard
+		b3KeyboardEventsData keyEvents;
+		sim->getKeyboardEvents(&keyEvents);
+		if (keyEvents.m_numKeyboardEvents)
+		{
+			for (int i=0;i<keyEvents.m_numKeyboardEvents;i++)
+			{
+				b3KeyboardEvent& e = keyEvents.m_keyboardEvents[i];
+
+				if (e.m_keyCode == 'r' && e.m_keyState&eButtonTriggered)
+				{
+					rotateCamera = 1-rotateCamera;
+				}
+//				printf("keyEvent[%d].m_keyCode = %d, state = %d\n", i,keyEvents.m_keyboardEvents[i].m_keyCode,keyEvents.m_keyboardEvents[i].m_keyState);
+			}
+		}
+
+		// Rotating camera?
+		if (rotateCamera)
+		{
+			static double yaw = 0;
+			double distance = 1;
+			yaw += 0.1;
+			b3Vector3 basePos;
+			b3Quaternion baseOrn;
+			sim->getBasePositionAndOrientation(robot, basePos, baseOrn);
+			sim->resetDebugVisualizerCamera(distance, -20, yaw, basePos);
+		}
+
 
 		// Get joint values
 		command = b3RequestActualStateCommandInit(kPhysClient, robot);

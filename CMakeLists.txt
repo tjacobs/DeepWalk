@@ -48,6 +48,8 @@ set(DeepWalk_SRCS
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/TinyRenderer/our_gl.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/TinyRenderer/TinyRenderer.cpp
 
+	${BULLET_PHYSICS_SOURCE_DIR}/examples/RobotSimulator/b3RobotSimulatorClientAPI.cpp
+
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/SharedMemory/IKTrajectoryHelper.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/SharedMemory/TinyRendererVisualShapeConverter.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/SharedMemory/InProcessMemory.cpp

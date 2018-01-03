@@ -101,6 +101,9 @@ bool	b3RobotSimulatorClientAPI::mouseButtonCallback(int button, int state, float
 }
 
 
+b3PhysicsClientHandle b3RobotSimulatorClientAPI::getClientHandle(){
+	return m_data->m_physicsClientHandle;
+}
 
 bool b3RobotSimulatorClientAPI::connect(int mode, const std::string& hostName, int portOrKey)
 {
@@ -148,7 +151,7 @@ bool b3RobotSimulatorClientAPI::connect(int mode, const std::string& hostName, i
 		}
 		case eCONNECT_DIRECT:
 		{
-			sm = b3ConnectPhysicsDirect();
+//			sm = b3ConnectPhysicsDirect();
 			break;
 		}
 		case eCONNECT_SHARED_MEMORY:
@@ -157,7 +160,7 @@ bool b3RobotSimulatorClientAPI::connect(int mode, const std::string& hostName, i
 			{
 				key = portOrKey;
 			}
-			sm = b3ConnectSharedMemory(key);
+//			sm = b3ConnectSharedMemory(key);
 			break;
 		}
 		case eCONNECT_UDP:
