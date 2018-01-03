@@ -73,14 +73,14 @@ int main(int argc, char* argv[]) {
 	b3Assert(b3GetStatusType(statusHandle) == CMD_CLIENT_COMMAND_COMPLETED);
 
 	// Load the world
-	command = b3LoadUrdfCommandInit(kPhysClient, "./terrain.urdf");
+	command = b3LoadUrdfCommandInit(kPhysClient, "../data/terrain.urdf");
 	b3LoadUrdfCommandSetUseFixedBase(command, true);	
 	statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
 	statusType = b3GetStatusType(statusHandle);
 	b3Assert(statusType == CMD_URDF_LOADING_COMPLETED);
 
 	// Load robot
-	command = b3LoadUrdfCommandInit(kPhysClient, "./ngr.urdf");
+	command = b3LoadUrdfCommandInit(kPhysClient, "../data/ngr.urdf");
 	int flags = URDF_USE_INERTIA_FROM_FILE;
 	b3LoadUrdfCommandSetFlags(command, flags);
 	b3LoadUrdfCommandSetUseFixedBase(command, false);
@@ -128,7 +128,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	// Load graph
-	Session* session = load_graph("graph.pb");
+	Session* session = load_graph("../data/graph.pb");
 
 	// Load input
 	vector<float> inputs;

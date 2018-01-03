@@ -39,14 +39,17 @@ set(BULLET_PHYSICS_SOURCE_DIR "bullet3")
 set(DeepWalk_SRCS
 	src/main.cpp
 	src/tensorflow.cpp
-	${BULLET_PHYSICS_SOURCE_DIR}/examples/SharedMemory/IKTrajectoryHelper.cpp
-	${BULLET_PHYSICS_SOURCE_DIR}/examples/ExampleBrowser/InProcessExampleBrowser.cpp
-	${BULLET_PHYSICS_SOURCE_DIR}/examples/SharedMemory/TinyRendererVisualShapeConverter.cpp
+	src/gui/InProcessExampleBrowser.cpp
+
+	# TinyRenderer
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/TinyRenderer/geometry.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/TinyRenderer/model.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/TinyRenderer/tgaimage.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/TinyRenderer/our_gl.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/TinyRenderer/TinyRenderer.cpp
+
+	${BULLET_PHYSICS_SOURCE_DIR}/examples/SharedMemory/IKTrajectoryHelper.cpp
+	${BULLET_PHYSICS_SOURCE_DIR}/examples/SharedMemory/TinyRendererVisualShapeConverter.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/SharedMemory/InProcessMemory.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/SharedMemory/PhysicsClient.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/SharedMemory/PhysicsServer.cpp
@@ -59,15 +62,18 @@ set(DeepWalk_SRCS
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/SharedMemory/b3PluginManager.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/SharedMemory/PhysicsClientSharedMemory.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/SharedMemory/PhysicsClientC_API.cpp
-#	${BULLET_PHYSICS_SOURCE_DIR}/examples/SharedMemory/Win32SharedMemory.cpp
+	${BULLET_PHYSICS_SOURCE_DIR}/examples/SharedMemory/Win32SharedMemory.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/SharedMemory/PosixSharedMemory.cpp
+
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/Utils/RobotLoggingUtil.cpp
+
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/ThirdPartyLibs/tinyxml/tinystr.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/ThirdPartyLibs/tinyxml/tinyxml.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/ThirdPartyLibs/tinyxml/tinyxmlerror.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/ThirdPartyLibs/tinyxml/tinyxmlparser.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/ThirdPartyLibs/Wavefront/tiny_obj_loader.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/ThirdPartyLibs/stb_image/stb_image.cpp
+
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/Importers/ImportColladaDemo/LoadMeshFromCollada.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/Importers/ImportObjDemo/LoadMeshFromObj.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/Importers/ImportObjDemo/Wavefront2GLInstanceGraphicsShape.cpp
@@ -77,9 +83,10 @@ set(DeepWalk_SRCS
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/Importers/ImportURDFDemo/URDF2Bullet.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/Importers/ImportURDFDemo/UrdfParser.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/Importers/ImportURDFDemo/urdfStringSplit.cpp
-	${BULLET_PHYSICS_SOURCE_DIR}/examples/Importers/ImportMeshUtility/b3ImportMeshUtility.cpp 
+	${BULLET_PHYSICS_SOURCE_DIR}/examples/Importers/ImportMeshUtility/b3ImportMeshUtility.cpp
+
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/MultiThreading/b3PosixThreadSupport.cpp
-#	${BULLET_PHYSICS_SOURCE_DIR}/examples/MultiThreading/b3Win32ThreadSupport.cpp
+	${BULLET_PHYSICS_SOURCE_DIR}/examples/MultiThreading/b3Win32ThreadSupport.cpp
 	${BULLET_PHYSICS_SOURCE_DIR}/examples/MultiThreading/b3ThreadSupportInterface.cpp	
 )
 
